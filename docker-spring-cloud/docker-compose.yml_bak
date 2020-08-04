@@ -1,0 +1,33 @@
+version: "3"
+services:
+  paizEureka:
+    image: pazieureka:v1
+    hostname: paizEureka
+    ports:
+    - "11001:11001"
+  paziGateway:
+    image: pazigateway:v1
+    hostname: paziGateway
+    ports:
+      - "11002:11002"
+    depends_on:
+      - paizEureka
+    restart: always
+  paziProducre:
+    image: paziproducer:v1
+    hostname: paziProducer
+    ports:
+    - "11003:11003"
+    depends_on:
+      - paizEureka
+    restart: always
+  paziConsumer:
+    image: paziconsumer:v1
+    hostname: paziConsumer
+    ports:
+    - "11004:11004"
+    depends_on:
+      - paizEureka
+      - paziProducre
+    restart: always
+
