@@ -1,5 +1,8 @@
-FROM centos
-VOLUME /tmp
-ADD producer-v1.jar app.jar
-RUN yum update -y &&  yum install -y nc  java-1.8.0-openjdk*
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+FROM java:8
+
+ARG SERVICE
+ARG TAG
+
+ADD ./target/${SERVICE}-${TAG}.jar /app.jar
+
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone

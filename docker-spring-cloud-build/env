@@ -1,0 +1,7 @@
+# 使用的时候，需要将文件命名为： .env
+imageRepository=com.mengli
+TAG=v1
+eurekaServiceName=eureka
+gatewayServiceName=gateway
+producerServiceName=producer
+consumerServiceName=consumer

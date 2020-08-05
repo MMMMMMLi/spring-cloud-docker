@@ -1,51 +1,74 @@
 version: "3"
 services:
-  paizEureka:
-    image: pazieureka:v1
-    hostname: paizEureka
+  mengliEureka:
+    image: ${imageRepository}.${eurekaServiceName}:${TAG}
+    container_name: mengliEureka
+    hostname: mengliEureka
+    build:
+      context: ./${eurekaServiceName}
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ${eurekaServiceName}
+        TAG: ${TAG}
     ports:
-    - "11001:11001"
-    # environment: 可以使用这个参数修改变量
-    #  - spring.profiles.active=dev
-  paziGateway:
-    image: pazigateway:v1
-    hostname: paziGateway
+      - "11001:11001"
+    restart: on-failure
+    environment:
+      - spring.profiles.active=docker
+  mengliProducer:
+    image: ${imageRepository}.${producerServiceName}:${TAG}
+    container_name: mengliProducer
+    hostname: mengliProducer
+    build:
+      context: ./${producerServiceName}
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ${producerServiceName}
+        TAG: ${TAG}
+    ports:
+      - "11003:11003"
+    depends_on:
+      - mengliEureka
+    restart: always
+    volumes:
+      - "./shells/wait-for-it.sh:/wait-for-it.sh"
+    command: ./wait-for-it.sh mengliEureka:11001 -t 30 -- java -jar -Dspring.profiles.active=docker /app.jar
+  mengliConsumer:
+    image: ${imageRepository}.${consumerServiceName}:${TAG}
+    container_name: mengliConsumer
+    hostname: mengliConsumer
+    build:
+      context: ./${consumerServiceName}
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ${consumerServiceName}
+        TAG: ${TAG}
+    ports:
+      - "11004:11004"
+    depends_on:
+      - mengliEureka
+      - mengliProducer
+    restart: always
+    volumes:
+      - "./shells/wait-for-it.sh:/wait-for-it.sh"
+    command: ./wait-for-it.sh mengliProducer:11003 -t 45 -- java -jar -Dspring.profiles.active=docker /app.jar
+  mengliGateway:
+    image: ${imageRepository}.${gatewayServiceName}:${TAG}
+    container_name: mengliGateway
+    hostname: mengliGateway
+    build:
+      context: ./${gatewayServiceName}
+      dockerfile: Dockerfile
+      args:
+        SERVICE: ${gatewayServiceName}
+        TAG: ${TAG}
     ports:
       - "11002:11002"
     depends_on:
-      - paizEureka
+      - mengliEureka
+      - mengliProducer
+      - mengliConsumer
+    restart: always
     volumes:
-      - "./entrypoint.sh:/entrypoint.sh"
-    environment:
-      SLEEP_SECOND: 4
-    tty: true
-    entrypoint: /entrypoint.sh -d paizEureka:11001 -c 'java -jar /app.jar';
-  paziProducer:
-    image: paziproducer:v1
-    hostname: paziProducer
-    ports:
-    - "11003:11003"
-    depends_on:
-      - paizEureka
-      - paziGateway
-    volumes:
-      - "./entrypoint.sh:/entrypoint.sh"
-    environment:
-      SLEEP_SECOND: 4
-    tty: true
-    entrypoint: /entrypoint.sh -d paziGateway:11002 -c 'java -jar /app.jar';
-  paziConsumer:
-    image: paziconsumer:v1
-    hostname: paziConsumer
-    ports:
-    - "11004:11004"
-    depends_on:
-      - paizEureka
-      - paziGateway
-      - paziProducer
-    volumes:
-      - "./entrypoint.sh:/entrypoint.sh"
-    environment:
-      SLEEP_SECOND: 4
-    tty: true
-    entrypoint: /entrypoint.sh -d paziProducer:11003 -c 'java -jar /app.jar';
+      - "./shells/wait-for-it.sh:/wait-for-it.sh"
+    command: ./wait-for-it.sh mengliConsumer:11004 -t 60 -- java -jar -Dspring.profiles.active=docker /app.jar

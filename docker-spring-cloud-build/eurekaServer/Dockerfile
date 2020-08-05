@@ -1,4 +1,12 @@
-FROM maven:3.5-jdk-8
-VOLUME /tmp
-ADD eureka-v1.jar app.jar
-ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+FROM java:8
+
+ARG SERVICE
+ARG TAG
+
+ENV JARNAME=${SERVICE}-${TAG}.jar
+
+ADD ./target/$JARNAME /app.jar
+
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone
+
+ENTRYPOINT ["sh","-c","java -DJAR_NAME=$JARNAME -jar /app.jar "]
