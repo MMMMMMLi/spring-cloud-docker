@@ -1,5 +1,20 @@
 version: "3"
 services:
+  mengliMysql:
+    image: mysql:5.7
+    container_name: mengliMysql
+    hostname: mengliMysql
+    ports:
+      - "13306:3306"
+    restart: always
+    environment:
+      LANG: "C.UTF-8"
+      MYSQL_ROOT_PASSWORD: "jiangweijia@0324"
+    volumes:
+      - "./db/data:/var/lib/mysql"
+      - "./db/conf/my.cnf:/etc/my.cnf"
+      - "./db/init:/docker-entrypoint-initdb.d/"
+    command: --default-authentication-plugin=mysql_native_password #解决外部无法访问
   mengliEureka:
     image: ${imageRepository}.${eurekaServiceName}:${TAG}
     container_name: mengliEureka
@@ -12,9 +27,12 @@ services:
         TAG: ${TAG}
     ports:
       - "11001:11001"
-    restart: on-failure
-    environment:
-      - spring.profiles.active=docker
+    depends_on:
+      - mengliMysql
+    restart: always
+    volumes:
+      - "./shells/wait-for-it.sh:/wait-for-it.sh"
+    command: ./wait-for-it.sh mengliMysql:3306 -t 30 -- java -jar -Dspring.profiles.active=docker /app.jar
   mengliProducer:
     image: ${imageRepository}.${producerServiceName}:${TAG}
     container_name: mengliProducer
@@ -29,10 +47,11 @@ services:
       - "11003:11003"
     depends_on:
       - mengliEureka
+      - mengliMysql
     restart: always
     volumes:
       - "./shells/wait-for-it.sh:/wait-for-it.sh"
-    command: ./wait-for-it.sh mengliEureka:11001 -t 30 -- java -jar -Dspring.profiles.active=docker /app.jar
+    command: ./wait-for-it.sh mengliEureka:11001 -t 45 -- java -jar -Dspring.profiles.active=docker /app.jar
   mengliConsumer:
     image: ${imageRepository}.${consumerServiceName}:${TAG}
     container_name: mengliConsumer
@@ -48,10 +67,11 @@ services:
     depends_on:
       - mengliEureka
       - mengliProducer
+      - mengliMysql
     restart: always
     volumes:
       - "./shells/wait-for-it.sh:/wait-for-it.sh"
-    command: ./wait-for-it.sh mengliProducer:11003 -t 45 -- java -jar -Dspring.profiles.active=docker /app.jar
+    command: ./wait-for-it.sh mengliProducer:11003 -t 60 -- java -jar -Dspring.profiles.active=docker /app.jar
   mengliGateway:
     image: ${imageRepository}.${gatewayServiceName}:${TAG}
     container_name: mengliGateway
@@ -68,7 +88,8 @@ services:
       - mengliEureka
       - mengliProducer
       - mengliConsumer
+      - mengliMysql
     restart: always
     volumes:
       - "./shells/wait-for-it.sh:/wait-for-it.sh"
-    command: ./wait-for-it.sh mengliConsumer:11004 -t 60 -- java -jar -Dspring.profiles.active=docker /app.jar
+    command: ./wait-for-it.sh mengliConsumer:11004 -t 75 -- java -jar -Dspring.profiles.active=docker /app.jar
